@@ -1,0 +1,20 @@
+topic,top_words, label
+1,"women, violence, gender, sexual, men",gender-based violence
+14,"risk, stock, price, market, volatility",stocks
+17,"reading, skills, literacy, comprehension, awareness",literacy
+18,"price, demand, competition, games, market"," ""market"""
+28,"states, united, united states, community, communities"," ""US communities"""
+36,"african, democracy, sub, income inequality, saharan"," ""Africa"""
+51,"political, politics, identity, participation, latin"," ""political-identity"""
+77,"gay, transgender, lesbian, bisexual, lgbt"," ""LGBT"""
+83,"religious, religion, human rights, socialization, church"," ""religion"""
+110,"firm, strategy, strategic, firms, performance"," ""firms"""
+160,"race, racial, black, white, discrimination"," ""racial-discrimination"""
+201,"argentina, ghana, pension, nonresponse, oaxaca",Argentina Ghana
+204,"model, models, selection, search, modeling",modelling
+218,"american, cultural, culture, seeking, african american",African-American culture
+251,"language, life, english, chinese, reliability"," ""language"""
+254,"learning, teachers, education, teacher, student",learning
+267,"children, child, family, home, families",families
+273,"minority, learners, immigrants, immigrant, second",immigrant
+297,"product, consumer, consumers, brand, products",consumer

@@ -1,0 +1,122 @@
+import pandas as pd
+from tqdm.notebook import tqdm
+import numpy as np
+import statsmodels.api as sm
+from libs.LastNamesInference import LastNamesInference
+import statsmodels.formula.api as smf
+
+
+class OLSInteractionModel:
+    
+    def __init__(self,df_ols):
+        race_gender_groups= ["white_M", "hispanic_M", "black_M", "asian_M", "white_F", "hispanic_F", "black_F", "asian_F"]
+        self.df_ols = df_ols
+        self.race_gender_groups = race_gender_groups
+                   
+    def run_ols(self,df,covars,dep='cit_all_IAC', catvars=None,interactions=None, removing_threshold = None):
+
+        df_ols = df[[dep]+covars].copy()
+
+        # df_ols = pd.get_dummies(df_ols, drop_first=True)
+        df_ols = df_ols.dropna()
+
+        if removing_threshold is not None:
+            df_ols=df_ols[df_ols[dep]<=removing_threshold]
+
+        if 'white_M' in covars:
+            covars.remove('white_M')            
+        if 'white' in covars:
+            covars.remove('white')
+        
+
+        if 'topic_1' in covars:
+            covars.remove('topic_1')
+        if catvars is not None:
+            covars = [x for x in covars if x not in catvars]
+
+
+        form = "{} ~ {}".format(dep, " + ".join(covars))
+
+        if catvars is not None:
+            catvars_str = '+'.join(['C('+x+')' for x in catvars])
+            form = form + " + "+ catvars_str
+            
+        # add interactions
+        form = form + " + " + interactions
+
+        ols_model = smf.ols(form, df_ols)
+
+        ols_model_res = ols_model.fit()
+        return ols_model_res
+    
+    def write_summary_results(self,path, results):
+        with open(path, 'w') as f:
+            f.write(results.summary().as_text())
+
+    def results_summary_to_dataframe(self, results, subset = 'all'):
+        '''take the result of an statsmodel results table and transforms it into a dataframe'''
+        pvals = results.pvalues
+        coeff = results.params
+        conf_lower = results.conf_int()[0]
+        conf_higher = results.conf_int()[1]
+
+        results_df = pd.DataFrame({"pvals":pvals,
+                                   "coeff":coeff,
+                                   "conf_lower":conf_lower,
+                                   "conf_higher":conf_higher
+                                    })
+        results_df = results_df[["coeff","pvals","conf_lower","conf_higher"]]
+        results_df = results_df.reset_index().rename(columns={'index':'variable'})
+        results_df['subset'] = subset
+        return results_df
+
+    def save_results(self, results,path='../../results/linear_models/', subset = 'all'):
+        path_summary = path + 'log_summary/ols_{}.txt'.format(subset)
+
+        self.write_summary_results(path_summary, results)
+        # res_df = self.results_summary_to_dataframe(results, subset)
+        # res_df.to_csv(path + 'ols_{}.csv'.format(subset), index=False)
+    
+    def get_params_table(self,fitted_models):
+
+        results = pd.DataFrame()
+        for g in fitted_models.keys():
+            model_result = fitted_models[g]
+            _ = self.results_summary_to_dataframe(model_result,g)
+            _['n'] = model_result.nobs
+            _[['institution_cat','dep','rg_cov']]=_.subset.str.split('+', expand=True)
+            _.drop(columns='subset', inplace=True)
+            results = results.append(_)
+        return results
+        
+    def main(self,subset = 'rg', model='usnr_rank_cat', dep = 'norm_Cit_2_iac'):
+        """
+        Model: usnr_rank_cat, selindex,avg_citations_Q
+        """
+        
+        if subset=='rg':
+            covars= ['nb_auteur','career_age'] + self.race_gender_groups + [model] #, 'Annee_Bibliographique'
+            catvars = [model]
+            interactions = [str(x + ':' + model) for x in self.race_gender_groups if x!='white_M']
+            interactions = ' + '.join(interactions)
+
+        if subset=='race':
+            covars= ['nb_auteur','career_age'] + ['white','hispanic','black','asian'] + [model] #, 'Annee_Bibliographique'
+            catvars = [model]
+            interactions = [str(x + ':' + model) for x in ['hispanic','black','asian']]
+            interactions = ' + '.join(interactions)
+
+        if subset=='gender':
+            covars= ['nb_auteur','career_age', 'gender'] +  [model] #, 'Annee_Bibliographique'
+            catvars = [model]
+            interactions = 'gender:'+model
+        
+        df_ols = self.df_ols
+        
+        # if dep is 'norm_Cit_2_iac':
+        #     df_ols=df_ols[df_ols.Annee_Bibliographique<=df_ols.Annee_Bibliographique.max()-2]
+        #normalize citations/JIF by topic
+        
+        model_fit = self.run_ols(df_ols,covars,dep,catvars=catvars, interactions=interactions)
+        self.save_results(model_fit,'../../results/linear_models/rg_inst_interaction/',subset=dep+'_'+subset+'_'+model)
+        return model_fit
